@@ -1,87 +1,96 @@
-Banjo Sound Lab
+# Banjo Sound Lab
 
-Banjo Sound Lab is a portable Windows application for exploring audio from a user-supplied Banjo-Kazooie ROM. It can extract the game's sound library, search and preview individual sounds, and render music tracks locally without distributing the ROM or extracted game audio.
+A player for every sound in Banjo-Kazooie: the sound effects and character
+voices, the instrument samples, and all 173 music tracks. Search them, play
+them, and save any of them out as WAV or MP3.
 
-Features
+## Getting started from source
 
-Extracts 734 sounds from a supported Banjo-Kazooie ROM
+Install Python on Windows, then run `Banjo Sound Lab.cmd` (which installs
+`numpy` and `pygame` if needed and launches `player.pyw`). Alternatively:
 
-Searchable sound library
+```powershell
+py -m pip install -r requirements.txt
+py player.pyw
+```
 
-Sound preview and playback
+The app prompts for a copy of the Banjo-Kazooie ROM that you provide yourself,
+then generates the local `library/` on first run. No ROM or extracted audio is
+included in this source repository. Keep your ROM available for on-demand music
+rendering. The interface works with a plain background when the optional
+`assets/bg.png` image is absent.
 
-Music-track rendering directly from the user's ROM
+**Source-only note:** This repository deliberately omits all artwork, icons,
+compiled executables and extracted audio. `make_bg.py` and `package.py` are
+preserved as original source scripts but need their original `assets/` inputs
+(or suitable replacements) before they can regenerate artwork or build an exe.
 
-Improved loop handling to reduce clicks and rain-like artefacts
+## What you get
 
-Short attack and release ramps for cleaner voice playback
+| Category | Count | Where it comes from |
+|---|---|---|
+| Sound Effects | 402 | The effects bank, decoded from the cartridge's ADPCM |
+| Instrument Samples | 159 | The music bank's instruments, one sample each |
+| Music | 173 | Sequence data, played through the instrument bank |
 
-Catmull-Rom interpolation for cleaner resampling
+Every name comes from the game's own source symbols, so `SFX_EA_GRUNTY_LAUGH_1`
+shows up as "Grunty Laugh 1" and you can search either spelling.
 
-Portable library stored beside the application when possible
+## Using it
 
-No Python installation required
+- Type to search; **Ctrl+F** jumps to the search box.
+- **Enter** or double-click plays, **Esc** stops.
+- **Loop** repeats the selection, which is how the looping samples are meant
+  to be heard.
+- **Save this sound...** writes the selection to a file. **Export everything
+  listed...** writes out whatever the current search shows, so searching
+  "grunty" and exporting gives you all 42 of her clips in one go.
+- WAV always works. MP3, OGG and FLAC appear as options when ffmpeg is on the
+  machine (it is found automatically at `C:\ffmpeg` or on PATH).
 
-Download and use
+Music is stored in the cartridge as sequences rather than as audio, so the
+first time you play a track it is rendered through the instrument bank. That
+takes a second or two; after that it is cached in `library/music/` and plays
+instantly.
 
-Download Banjo Sound Lab.exe from the Releases page.
+## Rebuilding the library
 
-Place it in its own writable folder.
+```bash
+py extract.py "path\to\Banjo-Kazooie.z64"
+```
 
-Double-click the executable.
+Delete the `library` folder to start over.
 
-When prompted, select your own legally obtained Banjo-Kazooie ROM.
+## How it works
 
-Allow the initial extraction to complete.
+- `banjolib/bkrom.py` — finds the asset table, the sound banks and the
+  sequences in the ROM, and unpacks Rare's deflate container.
+- `banjolib/vadpcm.py` — the ADPCM decoder. It is bit-exact: the cartridge
+  stores a decoder snapshot at each looping sample's loop point, and the
+  decoder reproduces 69 of the 71 of them exactly.
+- `banjolib/albank.py` — the instrument bank format (samples, key maps,
+  envelopes, loop points).
+- `banjolib/n64seq.py` — the sequence format, including the back-reference
+  compression the byte stream sits on.
+- `banjolib/synth.py` — renders a sequence by voicing each note from the bank,
+  matching how the game's sequence player picks samples and pitches them.
+- `player.pyw` — the window.
+- `make_bg.py` — regenerates the window background from `assets/background.png`.
+  Drop in any image of that name and re-run it to reskin the app. Needs Pillow.
 
-The application creates its working library beside the executable. If that location is not writable, it uses %LOCALAPPDATA%\BanjoSoundLab instead.
+Two details worth knowing if you poke at the code. Effects are not played at
+the bank's 22050 Hz: the sound driver derives each one's rate from its key map
+as `22050 * 2 ** ((keyBase * 100 + detune - 6000) / 1200)`, which is why most
+of them are really 11025 Hz. And a sample's `loop_end` names the last sample of
+the loop rather than one past it — treating it as exclusive puts a small step
+at every wrap, which across a dense track is audible as a constant crackle.
 
-Keep the selected ROM in its original location. Music is rendered from the ROM when requested and is not bundled with the application.
+## Not included
 
-Windows SmartScreen
+Banjo-Tooie. Its asset table and audio region are located, but Tooie replaced
+the standard sound bank format with something of Rare's own, and that has not
+been decoded yet.
 
-The executable is not code-signed, so Windows may display a Windows protected your PC warning on first launch. If you downloaded it from this repository, select More info, then Run anyway.
-
-The warning does not mean that malware was detected. It appears because the application is from an unknown publisher. You should still download releases only from this repository.
-
-What is not included
-
-This project does not contain or distribute:
-
-A Banjo-Kazooie ROM
-
-Extracted sound effects, music or other game assets
-
-Nintendo or Rare proprietary code
-
-You must provide your own legally obtained ROM. Do not upload ROMs or extracted copyrighted assets when reporting an issue.
-
-Building from source
-
-The source version requires a current Python 3 installation. Install the project dependencies, then run:
-
-py package.py
-
-This creates the single-file Windows executable. To create the source archive instead, run:
-
-py package.py --zip
-
-Known limitations
-
-Windows only
-
-First launch may take a few seconds while the one-file executable unpacks
-
-The ROM must remain available for on-demand music rendering
-
-Compatibility may depend on the ROM version and dump quality
-
-Legal notice
-
-Banjo Sound Lab is an unofficial fan-made utility and is not affiliated with, endorsed by or sponsored by Nintendo, Rare or Microsoft.
-
-Banjo-Kazooie and all related names, characters, music, sound effects and game assets are the property of their respective owners. This repository's licence applies only to the original Banjo Sound Lab source code and does not grant rights to any third-party material.
-
-Licence
-
-The original source code in this repository is released under the MIT Licence. Third-party components remain subject to their own licences.
+No ROM, and no audio extracted from one, is distributed with this. The
+background image is Rare's cover art; swap `assets/background.png` and re-run
+`make_bg.py` if you would rather it were not.
